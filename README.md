@@ -1,407 +1,247 @@
 # LANA Dance Formation
 
-> V1 product specification — working source of truth
+> V1 product specification — implementation baseline
 
 ## 1. Product purpose
 
-LANA Dance Formation is a web-based choreography formation visualisation tool designed primarily for Japanese idol groups and their choreographers.
+LANA Dance Formation is a lightweight web-based dance formation visualisation and editing tool designed primarily for Japanese idol groups and their choreographers.
 
-The product modernises the traditional workflow of distributing static printed formation sheets. A choreographer creates formation snapshots across a song, and LANA connects those snapshots over time so dancers can see where they are, where they need to go, and how they move between positions.
+It modernises static formation sheets by connecting formation snapshots over musical beats so dancers can see where they are, where they need to go, which way they face, and the route between positions.
 
-**LANA is not intended to become a general-purpose animation editor.** Its purpose is to make dance formation creation, communication, rehearsal and review easier.
+**V1 is a formation tool, not a body-animation tool.** It does not attempt to model arm, hand, leg or full-body dance choreography.
 
-## 2. Core design principle
+## 2. V1 principles
 
-The choreographer should only need to specify exceptions.
+- Keep the product simple enough to remain controllable and inexpensive.
+- Choreography data is portable JSON; a cloud account/database is not required for basic use.
+- Media is not stored by LANA. A project may reference external media such as YouTube.
+- The choreography clock is fundamentally beat/BPM based.
+- Straight movement is the default; the choreographer specifies exceptions.
+- View and Edit use the same underlying choreography data and stage framework.
+- Future sophistication must not make the basic V1 workflow harder.
 
-- A new unsaved snapshot begins with the previous snapshot's dancer positions.
-- Movement between snapshots is a straight line by default.
-- The default snapshot spacing is 16 beats.
-- Extra snapshots, custom paths and special formations are added only when required.
+## 3. Modes and devices
 
-The same underlying choreography data powers both Edit Mode and View Mode.
+### View Mode — smartphone first
 
----
+View Mode is read-only and intended primarily for landscape smartphones.
 
-## 3. Modes and target devices
+The screen prioritises:
 
-### View Mode
+1. A large rectangular stage.
+2. Coloured dancer markers and facing direction.
+3. A visual snapshot filmstrip.
+4. Playback/rehearsal controls.
 
-View Mode is the dancer-facing, read-only experience.
+The Edit toolbox is removed in View Mode so the stage and snapshot thumbnails can use the available width.
 
-Primary target: smartphone. The web interface should also respond appropriately to tablet and desktop screen sizes.
+Dancers can load a choreography JSON, play/pause, navigate snapshots, use FULL/ZOOM views, select a dancer and inspect that dancer's movement path. They cannot modify choreography.
 
-Dancers can:
+### Edit Mode — tablet first
 
-- Open/load a choreography JSON file.
-- View the stage and formation.
-- Play and pause choreography playback.
-- Jump backward 5 seconds.
-- Jump forward 5 seconds.
-- Change playback speed: 0.5x, 1.0x, 1.5x or 2.0x.
-- Change the timeline between a focused 60-second view and FULL-song view.
-- Select/highlight an individual dancer.
-- View that dancer's movement path between snapshots.
-- Use File functions made available to viewers, including opening another choreography and PDF export/download where applicable.
+Edit Mode is intended primarily for landscape tablets. Smartphone editing is not supported in V1.
 
-Dancers cannot:
+It uses the same stage/timeline framework as View Mode and adds the choreographer's creation toolbox, including formation presets, movement/path presets and snapshot editing.
 
-- Change BPM.
-- Change the number of dancers.
-- Change stage dimensions.
-- Edit dancer positions or choreography.
-- Create, move or delete snapshots.
-- Modify the YouTube source.
-- Save changes to the choreography.
+Edit Mode remains hidden during normal dancer use. Press-and-hold VIEW for approximately three seconds unlocks editing; once unlocked VIEW and EDIT can appear together for safe preview switching.
 
-Normal View Mode does not expose Edit controls.
+## 4. Stage and dancers
 
-### Edit Mode
+The stage is the dominant part of the interface. Reference dimensions are 20 m × 15 m with a 1 m grid, but width/depth are editable. Changing real dimensions changes the coordinate/grid scale rather than shrinking the physical UI canvas.
 
-Edit Mode is the choreographer-facing creation workspace, designed primarily for a tablet in landscape orientation.
+Blank canvas space around the stage grid can represent off-stage positions. Moving a dancer off stage does not delete the dancer or change project dancer count.
 
-The main stage/timeline framework remains consistent with View Mode, but Edit Mode adds the controls required to create and modify choreography.
+Each dancer has:
 
-#### Unlock behaviour
+- stable ID;
+- display name/label;
+- member colour;
+- position per snapshot;
+- facing direction per snapshot.
 
-Edit Mode is hidden during normal dancer use. Pressing and holding **VIEW for approximately 3 seconds** unlocks Edit Mode.
+Names support full Unicode including Japanese hiragana, katakana and kanji.
 
-Once unlocked, **VIEW** and **EDIT** appear next to each other so the choreographer can switch safely between editing and dancer-preview views.
+### Facing direction — V1 preferred treatment
 
----
+Use a compact **pointy nose/bump on the dancer circle** to indicate the dancer's front. The marker/nose rotates with facing direction while the displayed letter/name remains upright and readable.
 
-## 4. Stage and coordinate grid
+## 5. Beat-based snapshot model
 
-The central stage should occupy substantially more screen space than in the current prototype.
+Snapshots are choreography keyframes attached to musical beats.
 
-The stage represents real-world dimensions in metres. The current reference example is **20 m wide × 15 m deep**, with each grid square representing **1 metre**.
+Snapshot 00 is the starting formation. New work inherits the previous choreography state so formations do not need to be rebuilt from scratch.
 
-The choreographer can change stage width and depth/length in Edit Mode.
+The earlier rule that `+` must always split the interval exactly in half is no longer required. The timeline should allow the choreographer to work at a chosen beat and add a snapshot at the intended beat position.
 
-Changing dimensions changes the **grid and coordinate system, not the physical size of the stage canvas on screen**. For example, a 10 m-wide stage has fewer metre divisions than a 20 m-wide stage while using the same available display area.
+Deleting a snapshot must be recoverable through Undo/Redo. Protection of Snapshot 00 can be finalised during implementation.
 
-The stage includes a clear **FRONT** orientation.
+### Visual snapshot filmstrip
 
-### Off-stage area
+Snapshots are displayed as miniature formation previews rather than plain numbered buttons. This filmstrip is a primary navigation element in both View and Edit modes.
 
-Blank space around the numbered stage grid is functional off-stage space.
+If a project contains 52 snapshots, the interface can show `52 Snapshots` and allow horizontal browsing rather than squeezing every thumbnail onto one screen.
 
-A dancer dragged outside the grid is off stage but remains part of the choreography. Moving a dancer off stage must **not** change the project's dancer count or delete the dancer.
+### FULL and ZOOM 32
 
-This allows routines such as eight members beginning together, six leaving while two perform, and all eight returning later.
+The old `60s / FULL` timeline concept is replaced.
 
----
+- **FULL** is the comfortable snapshot-browser/overview scale. It shows many readable snapshot thumbnails and can scroll horizontally; it does not have to compress every snapshot onto one screen.
+- **ZOOM 32** is the precision view focused on a 32-beat region (four 8-counts). It makes beat placement and nearby snapshot selection/editing safer and clearer.
 
-## 5. Dancers
+The same FULL/ZOOM concept is used in View Mode and Edit Mode. In View Mode it is read-only navigation; in Edit Mode ZOOM 32 supports precise snapshot work.
 
-Edit Mode allows the choreographer to add or remove dancers from the project using plus/minus controls.
+A traditional seconds-based progress bar or remaining-time display is not required for V1 UI. Internal media synchronisation may still use elapsed time as needed.
 
-Each dancer has persistent identity data including:
+## 6. Movement paths
 
-- Display name/label.
-- Member colour.
+Between snapshots, straight-line movement is the default.
 
-Display names must support Unicode, including ASCII, numbers and Japanese text such as hiragana, katakana and kanji.
+A choreographer can override the default with a custom route, for example a curve or route around/behind another dancer.
 
-Member colours are particularly important for Japanese idol groups, where individual members commonly have assigned colours.
+V1 supports:
 
-A dancer's snapshot state includes at minimum:
+- straight default paths;
+- a small starter set of useful path presets;
+- touch/hand-drawn custom paths where practical;
+- saving custom movement/path presets for reuse.
 
-- Position.
-- On-stage/off-stage position/state as represented on the canvas.
-- Facing direction.
+Terminology should avoid implying that V1 stores full-body "dance moves". V1 stores **movement paths/routes**: how a dancer travels between formation positions.
 
-### Facing direction — required, visual treatment TBD
+In View Mode, selecting a dancer can highlight that dancer, dim others and display the actual stored movement path.
 
-Facing direction must be visible to dancers, but the exact visual treatment remains open for mock-up testing.
+## 7. Formation library
 
-Candidate treatments include:
+Edit Mode includes a small starter set of formation presets.
 
-1. Rotating the dancer's name/label to match facing direction.
-2. Keeping the label readable while using an internal direction marker.
-3. Giving the dancer circle a small "nose"/bump indicating its front.
-
-Dense formations must remain readable; an indicator that consumes substantial space outside the dancer circle should be avoided if it interferes with nearby dancers.
-
----
-
-## 6. Snapshot model
-
-Snapshots are choreography keyframes.
-
-### Snapshot 00
-
-**Snapshot 00** is the song's starting formation.
-
-### Default spacing
-
-Subsequent snapshots are spaced **16 beats apart by default**. Actual elapsed time therefore depends on BPM.
-
-### Position inheritance
-
-When the choreographer opens a snapshot with no saved position data yet, it initially displays the immediately preceding snapshot's positions.
-
-Example:
-
-1. Snapshot 00 contains the starting positions.
-2. Snapshot 01 initially shows Snapshot 00's positions.
-3. The choreographer moves dancers and presses SAVE.
-4. Snapshot 02 then begins from Snapshot 01's saved positions.
-
-This avoids rebuilding every formation from scratch.
-
-### SAVE
-
-The Edit Mode **SAVE** control commits the currently selected snapshot's choreography changes to the working project. It is distinct from downloading/exporting the complete project file.
-
-### Adding snapshots: midpoint rule
-
-The snapshot `+` control inserts a new snapshot **halfway between the currently selected snapshot and the next snapshot**.
-
-For example, if Snapshot 01 and Snapshot 02 are 16 beats apart, adding a snapshot while on Snapshot 01 divides that interval into two 8-beat sections.
-
-If a further snapshot is inserted into an 8-beat section, that section is divided again into 4-beat sections.
-
-This allows additional timing precision only where the choreography requires it.
-
-### Removing snapshots
-
-The snapshot `−` control removes the currently selected snapshot.
-
-Undo/Redo is therefore an important Edit Mode requirement so accidental snapshot changes or deletion can be recovered.
-
-**Open question:** whether Snapshot 00 should be protected from deletion will be confirmed later.
-
----
-
-## 7. Movement between snapshots
-
-By default, a dancer travels in a **straight line** from the previous snapshot position to the next snapshot position.
-
-The choreographer can override this with a custom movement path when a dancer needs to curve, travel around/behind other dancers, or follow another route.
-
-Edit Mode should support:
-
-- A small built-in library of common movement paths.
-- Touch/hand-drawn custom paths where required.
-- Saving a newly created movement as a reusable named preset.
-
-The movement library should be horizontally scrollable and provide an Edit/Pencil mechanism for saving/managing custom moves.
-
----
-
-## 8. Formation presets
-
-Edit Mode includes a small starter library of reusable formations.
-
-The choreographer can also arrange dancers manually and save the resulting arrangement as a **named custom formation** for later reuse.
-
-The formation library should be horizontally scrollable and provide an Edit/Pencil mechanism for saving/managing custom formations.
+The choreographer can manually create a formation, name it and save it for later reuse. Applying a preset creates a starting arrangement that can then be adjusted for the current routine without requiring the original preset to change.
 
 Conceptually:
 
-- **Formation = where the dancers are.**
-- **Move = how the dancers get there.**
+- **Formation = where dancers are.**
+- **Movement path = how they get there.**
 
----
+## 8. Reusable choreographer library
 
-## 9. Individual dancer focus in View Mode
+V1 should support a lightweight reusable preset library separate from an individual song/routine.
 
-A dancer can tap a dancer marker on the stage to focus on that member.
+A choreographer can maintain/import a small library JSON containing reusable:
 
-When focused:
+- formation presets;
+- movement/path presets.
 
-- The selected dancer remains visually prominent.
-- Other dancers are dimmed.
-- The selected dancer's movement between snapshots becomes visible.
-- The displayed movement must use the actual stored path, including custom/curved paths, rather than always showing a straight line.
+This allows Lana, for example, to load her personal library on a device and use familiar patterns while creating a new choreography without requiring a LANA cloud account.
 
-This is intended to make it easier for an individual performer to learn and remember their own movement through the choreography.
+Exact library JSON schema will be defined during implementation.
 
-### Movement-path visual — required, treatment TBD
+## 9. BPM and rehearsal audio
 
-Candidate treatments for mock-up testing include:
+BPM is core choreography timing data. Default may begin at 120 BPM and can be adjusted in Edit Mode with +/- and direct numeric entry.
 
-- A ghost of the previous/from position plus a dotted movement path.
-- A dotted path ending in a directional arrow.
-- A combination if testing shows that it is clearer without adding excessive visual clutter.
+LANA must provide **BPM-based rehearsal audio that works without YouTube/media playback**.
 
----
+The exact rehearsal sound is deliberately not locked yet. Possible future/implementation choices include:
 
-## 10. Edit Mode toolbox
+- accented first beat plus ordinary clicks;
+- bell/accent on beat 1 with clicks on remaining beats;
+- spoken 1–8 counts.
 
-The right-side editing area contains the main creation controls:
+The beat clock must be separated from the sound treatment so the sound can change without changing choreography data.
 
-1. YouTube
-2. BPM
-3. Snapshot
-4. Dancers
-5. Formation
-6. Moves
+Playback speed and choreography BPM are separate concepts.
 
-Tablet space is limited, so approximately two rows may be visible at once, with horizontal and/or vertical scrolling within the toolbox as appropriate.
+## 10. External media / YouTube
 
-### YouTube
+LANA does not store WAV, MP3, MP4 or other song/video media in the choreography JSON or on a LANA media server.
 
-The choreographer supplies the YouTube URL/reference used for the routine. The reference becomes part of the choreography project data so View Mode can reconstruct the routine.
+A choreography JSON may store an external media reference, initially expected to support YouTube/video ID or URL. The external provider streams the media.
 
-### BPM
+Media should be represented generically in the data model where practical (for example provider + media reference) so the choreography format is not unnecessarily locked to one provider.
 
-Default BPM: **120**.
+Private/unreleased-song access and authenticated YouTube behaviour require implementation testing against current platform rules.
 
-The current 80/100/120/140 preset buttons are not required.
+**YouTube/media functionality remains in V1 architecture, but it does not need permanent screen real estate.** The final media control may be a compact button/panel/popover. If media cannot be played, BPM/click rehearsal remains available.
 
-Use plus/minus controls to adjust BPM. Tapping the BPM number should allow direct numeric entry.
+## 11. Edit Mode toolbox
 
-BPM is choreography timing data and is separate from View Mode playback speed.
+The first approved Edit Mode visual direction remains the V1 baseline, but controls should earn permanent screen space.
 
-### Snapshot
+The right-side creation area is for editing functions such as:
 
-Provides snapshot selection plus the midpoint insertion (`+`) and current-snapshot removal (`−`) behaviour described above.
+- formations;
+- movement/path presets;
+- snapshot creation/editing;
+- relevant project controls.
 
-### Dancers
+Dancer identity information may remain on the left. Media does not require a large permanent panel.
 
-Provides project-level dancer count controls and access to dancer configuration.
+Exact toolbox layout can be refined during the real implementation without changing the V1 product model.
 
-### Formation
+## 12. File workflow and JSON
 
-Provides built-in and user-saved formation presets.
+The basic workflow is deliberately server-light:
 
-### Moves
+1. Choreographer creates/edits a routine.
+2. LANA exports a small choreography JSON file.
+3. The file is distributed using the user's preferred method (for example messaging, email, AirDrop or drive storage).
+4. A dancer opens the JSON in LANA View Mode.
+5. LANA reconstructs the stage, dancers, snapshots, paths, timing and external-media reference.
 
-Provides built-in and user-saved movement-path presets.
+The choreography JSON should contain enough information to reconstruct at minimum:
 
----
+- project/song metadata;
+- BPM and beat/timing data;
+- optional external-media provider/reference;
+- stage dimensions;
+- dancer IDs, names and colours;
+- snapshots and their beat positions;
+- dancer coordinates and facing direction per snapshot;
+- custom movement paths required for playback.
 
-## 11. Timeline and playback
+Reusable choreographer presets may live in a separate library JSON rather than being duplicated into every project except where the project needs embedded data for portable playback.
 
-The bottom of both View and Edit modes contains the song progress/timeline system.
+FILE operations should include opening/loading choreography JSON and saving/downloading choreography JSON in Edit Mode. PDF formation-sheet export remains desirable; exact PDF layout can be resolved later.
 
-Required controls include:
+## 13. Language and localisation
 
-- Play/Pause.
-- Back 5 seconds.
-- Forward 5 seconds.
-- Timeline/playhead.
-- Snapshot/keyframe indicators.
-- 60s/FULL timeline zoom.
-- Playback speed.
+Japanese is the primary production language. English is used for development/testing and is also a supported UI language.
 
-### 60s / FULL
+The architecture must support Japanese from the beginning. Japanese labels should use terminology natural to choreographers rather than blind literal translation.
 
-This is a **timeline zoom/view-range control**, not a snapshot-spacing control.
+## 14. Explicit V1 boundary
 
-- **FULL** displays the complete song timeline, including songs around four minutes or longer.
-- **60s** displays a more focused approximately one-minute window around the relevant/current section.
+V1 includes:
 
-### Playback speed
-
-Supported speeds:
-
-- 0.5x
-- 1.0x
-- 1.5x
-- 2.0x
-
-Changing playback speed changes rehearsal playback only. It does **not** change the choreography BPM.
-
----
-
-## 12. File workflow
-
-The choreography should be portable rather than requiring a dancer account/server workflow for basic viewing.
-
-The choreographer completes a routine and exports/downloads a JSON choreography file. That file can be sent to dancers, who open it in View Mode.
-
-The JSON should contain enough project information to reconstruct the choreography, including at minimum:
-
-- Project/song metadata.
-- YouTube reference.
-- BPM/timing information.
-- Stage dimensions.
-- Dancer identities and colours.
-- Snapshots/keyframes.
-- Dancer positions and facing directions.
-- Movement paths.
-- Formation/movement information required for playback.
-
-Exact JSON schema remains an implementation decision to be defined before coding.
-
-### FILE menu
-
-The FILE area should support the appropriate project operations, including:
-
-- Open/load choreography JSON.
-- Save/download choreography JSON in Edit Mode.
-- Export/download formation snapshots as PDF.
-- Open another routine/song as appropriate.
-
-The exact File menu layout will be resolved during UI design.
-
----
-
-## 13. Settings
-
-Settings includes dancer identity configuration.
-
-For each dancer, the choreographer can change:
-
-- Display name/label.
-- Member colour.
-
-The interface and stored data must fully support Japanese Unicode text.
-
-Additional Settings items may be defined later.
-
----
-
-## 14. Language and localisation
-
-The production product is intended primarily for Japanese choreographers and Japanese idol/dance groups.
-
-Required product languages:
-
-- **Japanese — primary production language.**
-- **English — development, testing and QA language, and supported UI language.**
-
-Development may begin with English UI for easier testing, but the architecture and layouts must support Japanese from the beginning.
-
-Japanese labels should use terminology natural to Japanese choreographers rather than blindly translating English interface terms word-for-word.
-
----
-
-## 15. Current open design decisions
-
-These are deliberately **not blockers for V1 specification or engineering preparation**:
-
-- Exact facing-direction visual: rotating label vs internal marker vs "nose" circle.
-- Focused-dancer movement visual: ghost vs dotted directional arrow vs combination.
-- Exact toolbox layout, scrolling behaviour and component dimensions.
-- Exact File menu presentation.
-- Exact Settings screen presentation.
-- Final treatment of Snapshot 00 deletion/protection.
-- Exact PDF snapshot layout.
-- Exact JSON schema.
-
-These should be tested/resolved through mock-ups and implementation planning rather than guessed prematurely.
-
----
-
-## 16. V1 product boundary
-
-V1 should remain focused on:
-
-**Create choreography → save portable choreography → distribute it → let dancers clearly visualise and rehearse formations and movement.**
-
-Features that do not materially support that workflow should not expand V1 unnecessarily.
-
----
-
-## 17. Next steps
-
-1. Create View Mode and Edit Mode UI mock-ups based on this specification and the existing prototype reference.
-2. Compare the open facing-direction treatments visually.
-3. Compare focused-dancer movement-path treatments visually.
-4. Confirm the UI with the product owner.
-5. Define the V1 JSON schema and application architecture.
-6. Implement against this specification while keeping the README updated as decisions are locked.
+- formation editing;
+- coloured dancer markers;
+- facing direction;
+- beat/BPM timing;
+- visual snapshot filmstrip;
+- FULL and ZOOM 32 views;
+- straight and custom movement paths;
+- reusable formation/path presets;
+- portable choreography JSON;
+- reusable library JSON;
+- BPM/click rehearsal;
+- optional external-media reference/playback;
+- smartphone View Mode;
+- tablet Edit Mode.
+
+V1 explicitly does **not** model detailed arm, hand, leg or full-body dance animation.
+
+More sophisticated dancer/avatar/body-movement visualisation is a possible future V2/V3 concept and must not expand V1 scope.
+
+## 15. Implementation sequence
+
+1. Freeze this V1 scope as the implementation baseline.
+2. Build the shared responsive stage and dancer-marker system.
+3. Build View Mode for landscape smartphone.
+4. Build the visual snapshot filmstrip with FULL and ZOOM 32 behaviour.
+5. Build beat/BPM timing and local click playback.
+6. Build tablet Edit Mode and snapshot editing.
+7. Add formation and movement/path preset libraries.
+8. Define/finalise choreography JSON and reusable library JSON schemas alongside implementation.
+9. Add JSON import/export.
+10. Add optional external-media integration without making it a dependency for choreography playback.
+11. Test on real phone/tablet sizes and refine UI.
+
+The README remains the V1 source of truth and should be updated whenever a product decision is intentionally changed.
